@@ -1,0 +1,47 @@
+name: Install approved Discord artwork
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.asset-payload/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode approved artwork
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+
+          keys = ['welcome','rules','support','wipe-times','map-voting','next-map']
+          payload = Path('.asset-payload')
+          out = Path('discord')
+          out.mkdir(exist_ok=True)
+
+          for key in keys:
+              parts = sorted(payload.glob(f'{key}.*.b64'))
+              if not parts:
+                  raise SystemExit(f'Missing payload for {key}')
+              encoded = ''.join(p.read_text().strip() for p in parts)
+              data = base64.b64decode(encoded, validate=True)
+              if len(data) < 15000 or data[:4] != b'RIFF' or data[8:12] != b'WEBP':
+                  raise SystemExit(f'Invalid WebP payload for {key}')
+              target = out / f'rustnova-{key}-hq.webp'
+              target.write_bytes(data)
+              print(f'{target}: {len(data)} bytes')
+          PY
+      - name: Commit artwork and remove temporary payload
+        run: |
+          git config user.name "rustnova-assets-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add discord/rustnova-*-hq.webp
+          git rm -r .asset-payload .github/workflows/install-discord-artwork.yml
+          git commit -m "assets: install approved RustNova Discord banners"
+          git push
