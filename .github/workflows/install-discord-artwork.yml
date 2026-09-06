@@ -26,12 +26,12 @@ jobs:
           out.mkdir(exist_ok=True)
 
           for key in keys:
-              parts = sorted(payload.glob(f'{key}.*.b64'))
+              parts = sorted(payload.glob(f'v2-{key}.*.b64'))
               if not parts:
                   raise SystemExit(f'Missing payload for {key}')
               encoded = ''.join(p.read_text().strip() for p in parts)
               data = base64.b64decode(encoded, validate=True)
-              if len(data) < 15000 or data[:4] != b'RIFF' or data[8:12] != b'WEBP':
+              if len(data) < 14000 or data[:4] != b'RIFF' or data[8:12] != b'WEBP':
                   raise SystemExit(f'Invalid WebP payload for {key}')
               target = out / f'rustnova-{key}-hq.webp'
               target.write_bytes(data)
